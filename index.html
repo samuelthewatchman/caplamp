@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edenbiz Procure Inventory</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#102a43">
+<!-- iOS/Safari don't read the manifest for "Add to Home Screen" —
+     these three tags are what make it open full-screen there
+     instead of inside Safari's normal browser chrome, and what
+     iOS uses as the home-screen icon/title. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Edenbiz Procure">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div class="login-page" id="loginPage">
+<header class="site-header">
+  <div class="site-logo">EDENBIZ PROCURE<small>Cap Lamp Spares Inventory</small></div>
+</header>
+<section id="login" class="login">
+<div class="login-card">
+
+  <div id="signInView">
+    <h2>Welcome back</h2><p class="muted">Sign in using your assigned staff code and password.</p>
+    <form id="loginForm">
+      <div class="field"><label for="loginCode">Staff code</label><input id="loginCode" placeholder="e.g. SVT1000" autocomplete="username" required></div>
+      <div class="field"><label for="loginPassword">Password</label><input id="loginPassword" type="password" placeholder="Enter password" autocomplete="current-password" required></div>
+      <button class="btn full" type="submit">Sign in</button>
+    </form>
+    <!-- Only shown when no admin account exists yet at all — see
+         showCorrectForm() in auth.js. Once an admin exists, this
+         stays hidden forever, so no one can even try. -->
+    <button id="showAdminSetup" type="button" class="btn gray full hidden" style="margin-top:12px">Admin — set up first admin account</button>
+  </div>
+
+  <div id="adminSetupView" class="hidden">
+    <h2>Admin setup</h2><p class="muted">Enter the admin key to create the first admin account. This only works once.</p>
+    <form id="createAdminForm">
+      <div class="field"><label for="adminKey">Admin key</label><input id="adminKey" type="password" placeholder="Enter the admin setup key" required></div>
+      <div class="field"><label for="adminName">Your name</label><input id="adminName" placeholder="e.g. Terry Mensah" required></div>
+      <div class="field"><label for="adminCode">Choose a staff code</label><input id="adminCode" placeholder="e.g. SVT1000" required></div>
+      <div class="field"><label for="adminPassword">Choose a password</label><input id="adminPassword" type="password" placeholder="At least 6 characters" minlength="6" required></div>
+      <button class="btn full" type="submit">Create admin account</button>
+    </form>
+    <button id="backToSignIn" type="button" class="btn gray full" style="margin-top:8px">Back to sign in</button>
+  </div>
+
+  <div id="loginError" class="error"></div>
+</div>
+</section>
+<footer class="site-footer">Edenbiz Procure &middot; Cap Lamp Spares Inventory &middot; Internal use only</footer>
+</div>
+
+<div id="app" class="app hidden">
+
+<!-- SITE HEADER: full-width bar, always visible. Holds the menu
+     button (opens the sidebar), the bigger site name, and who's
+     signed in. -->
+<header class="site-header">
+  <button id="menuToggle" class="menu-toggle" aria-label="Open menu">☰</button>
+  <div class="site-logo">EDENBIZ PROCURE<small>Cap Lamp Spares Inventory</small></div>
+  <div class="profile" id="profile">● Terry · SVT1000</div>
+</header>
+
+<!-- Dark overlay behind the popup sidebar. Clicking it closes the
+     sidebar — same as clicking outside a dropdown. -->
+<div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
+
+<!-- POPUP SIDEBAR: hidden off-screen by default, slides in over the
+     page when menuToggle is clicked (see layout.js). -->
+<aside class="side" id="sidebar">
+    <div class="side-logo">EDENBIZ PROCURE<small>Cap Lamp Spares Inventory</small></div>
+    <nav class="nav">
+    <button class="active" data-page="dashboard">▦ Dashboard</button>
+    <button data-page="spares">▤ Inventory</button>
+    <button data-page="issue">↗ Issue Inventory</button>
+    <button data-page="receive">↙ Add To Inventory</button>
+    <button data-page="activity">⚑ Alerts & Activity <span id="lowBadge" class="nav-badge hidden">0</span></button>
+    <div class="nav-divider"></div>
+    <button data-page="reports">▥ Reports & Gmail</button>
+    <button data-page="staff">♙ Staff Management</button>
+  </nav>
+  <div class="side-bottom">
+    SIGNED-IN USER<br>
+    <b id="sideUser">Terry</b> <span id="sideRole" class="role-pill">Staff</span><br>
+    <span id="sideCode">SVT1000</span>
+    <button id="logoutBtn" type="button" class="btn full" style="margin-top:14px">Log out</button>
+  </div>
+</aside>
+
+<main>
+<div class="top"><div class="eyebrow">EDENBIZ PROCURE / MINING STORES</div><h1 id="pageTitle">Dashboard</h1></div>
+
+<section class="page active" id="dashboard">
+<div class="cards">
+<div class="card"><div class="label">Total Stock Units</div><div class="metric" id="totalStock">950</div><div class="sub">Across all spare parts</div></div>
+<div class="card"><div class="label">Issued Today</div><div class="metric" id="issuedToday">37</div><div class="sub">Stock movement</div></div>
+<div class="card"><div class="label">Low Stock Items</div><div class="metric" id="lowCount">2</div><div class="sub">Need attention</div></div>
+<div class="card"><div class="label">Stock Value</div><div class="metric" id="stockValue">GH₵ 24,850</div><div class="sub">Illustrative valuation</div></div>
+</div>
+<div class="grid">
+<div class="panel"><div class="panel-head"><h2>Current Stock Balance</h2><button class="btn secondary" data-page="spares">View all</button></div><table><thead><tr><th data-sort="name">Item</th><th data-sort="opening">Opening</th><th data-sort="issued">Issued</th><th data-sort="balance">Balance</th><th>Status</th></tr></thead><tbody id="stockTable"></tbody></table></div>
+<div class="panel"><h2>Stock Usage Overview</h2><div class="muted">Illustrative usage by period</div>
+<div class="bar-row"><div class="bar-label"><span>Today</span><b id="usageToday">0</b></div><div class="bar"><div class="fill" id="usageTodayFill" style="width:0%"></div></div></div>
+<div class="bar-row"><div class="bar-label"><span>This week</span><b id="usageWeek">0</b></div><div class="bar"><div class="fill" id="usageWeekFill" style="width:0%"></div></div></div>
+<div class="bar-row"><div class="bar-label"><span>This month</span><b id="usageMonth">0</b></div><div class="bar"><div class="fill" id="usageMonthFill" style="width:0%"></div></div></div>
+<div class="bar-row"><div class="bar-label"><span>This year</span><b id="usageYear">0</b></div><div class="bar"><div class="fill" id="usageYearFill" style="width:0%"></div></div></div></div>
+</div></section>
+
+<section class="page" id="spares"><div class="panel"><div class="panel-head"><h2>Inventory Register</h2><div style="display:flex;gap:8px">
+<!-- Only shown to Admin accounts — see refreshAddItemVisibility()
+     in items.js. Hidden here is just politeness for Staff; the
+     real lock is the "Admins can add items" database policy. -->
+<button id="addItemToggle" type="button" class="btn secondary hidden">+ Add Item</button>
+<button class="btn" data-page="receive">+ Receive Stock</button>
+</div></div>
+
+<!-- Admin-only new-item form. Hidden until the "+ Add Item" button
+     above is clicked. -->
+<div id="addItemPanel" class="hidden" style="background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px">
+<h3 id="itemFormTitle" style="margin:0 0 14px">Add New Item</h3>
+<form id="addItemForm" class="form">
+<div class="field"><label for="newItemCode">Item code<input id="newItemCode" placeholder="e.g. PCB-002" required></label></div>
+<div class="field"><label for="newItemName">Spare name<input id="newItemName" placeholder="e.g. PCB (revised)" required></label></div>
+<div class="field"><label for="newItemCategory">Category<select id="newItemCategory"></select></label></div>
+<div class="field"><label for="newItemOpening">Opening stock<input id="newItemOpening" type="number" min="0" value="0" required></label></div>
+<div class="field"><label for="newItemMin">Minimum stock<input id="newItemMin" type="number" min="0" value="0" required></label></div>
+<div class="field"><label for="newItemCost">Cost per unit (GH₵)<input id="newItemCost" type="number" min="0" step="0.01" value="0" required></label></div>
+<div class="actions"><button id="addItemSubmitBtn" class="btn" type="submit">Add Item</button><button id="cancelAddItem" class="btn gray" type="button">Cancel</button></div>
+</form>
+<!-- Only shown/filled in Edit mode — a brand-new item has no cost
+     history yet, so there's nothing to show while adding. -->
+<div id="costHistoryBox" class="hidden" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+<h4 style="margin:0 0 8px;font-size:13px">Cost History</h4>
+<div id="costHistoryList" class="muted" style="font-size:13px"></div>
+</div>
+</div>
+
+<input id="spareSearch" placeholder="Search by name, code, or category..." style="width:100%;padding:11px;margin-bottom:14px;border:1px solid var(--line);border-radius:8px"><table><thead><tr><th data-sort="code">Item Code</th><th data-sort="name">Spare Name</th><th data-sort="category">Category</th><th data-sort="balance">Balance</th><th data-sort="min">Minimum</th><th>Status</th><th>Actions</th></tr></thead><tbody id="allSpares"></tbody></table></div></section>
+
+<section class="page" id="activity"><div class="panel"><h2>Alerts</h2><div id="alerts"></div></div><div class="panel" style="margin-top:18px"><h2>Recent Activity</h2><table><thead><tr><th>Date</th><th>Spare</th><th>Action</th><th>Qty</th><th>Staff</th><th>Details</th></tr></thead><tbody id="activityTable"></tbody></table></div></section>
+
+<section class="page" id="issue"><div class="panel"><h2>Issue Cap Lamp Spares</h2><p class="muted">Record items taken out of the store. The signed-in staff member is recorded automatically.</p><form id="issueForm" class="form">
+<div class="field"><label>Spare part<select id="issueItem"></select></label></div>
+<div class="field"><label>Quantity issued<input id="issueQty" type="number" min="1" value="1" required></label></div>
+<div class="field"><label>Reason / Reference<input id="issueReason" placeholder="e.g. Damaged lamp replacement"></label></div>
+<div class="actions"><button class="btn" type="submit">Confirm Issue</button><button class="btn gray" type="reset">Clear</button></div></form><div class="notice">Every issue is linked to the current staff code.</div></div></section>
+
+<section class="page" id="receive"><div class="panel"><h2>Receive New Stock</h2><p class="muted">Add incoming spare parts to the inventory.</p><form id="receiveForm" class="form">
+<div class="field"><label>Spare part<select id="receiveItem"></select></label></div>
+<div class="field"><label>Quantity received<input id="receiveQty" type="number" min="1" value="10" required></label></div>
+<div class="field"><label>Supplier / Source<input id="receiveSupplier" placeholder="e.g. Approved supplier" required></label></div>
+<div class="field"><label>Delivery reference<input id="receiveRef" placeholder="e.g. GRN-001"></label></div>
+<div class="actions"><button class="btn" type="submit">Record Receipt</button><button class="btn gray" type="reset">Clear</button></div></form></div></section>
+
+<section class="page" id="reports"><div class="panel"><h2>Reports & Gmail</h2><p class="muted">Send the live inventory report from your Gmail to a supervisor.</p>
+<div class="form" style="max-width:520px;margin-bottom:16px">
+<div class="field"><label for="period">Reporting period<select id="period"><option>Daily</option><option>Weekly</option><option>Monthly</option><option>Yearly</option></select></label></div>
+<div class="field"><label for="reportEmailTo">Send report to<input id="reportEmailTo" type="email" placeholder="supervisor@company.com" autocomplete="email" required></label></div>
+</div>
+<div class="report"><h3 id="reportTitle">Edenbiz Procure – Daily Cap Lamp Spares Inventory Report</h3><p class="muted" id="reportDate">Live report</p><div class="report-stats"><div class="report-stat">Opening stock<b id="rOpening">950</b></div><div class="report-stat">Received<b id="rReceived">0</b></div><div class="report-stat">Issued<b id="rIssued">37</b></div></div><table><thead><tr><th>Spare</th><th>Issued</th><th>Balance</th></tr></thead><tbody id="reportTable"></tbody></table><div class="actions"><button class="btn" id="sendEmail" type="button">✉ Send with Gmail</button><button class="btn secondary" id="connectGmail" type="button">Connect Gmail</button><button class="btn gray" id="exportReport" type="button">Export CSV</button></div><p id="gmailStatus" class="muted" style="margin-top:12px"></p><div id="emailPreview" class="notice hidden"></div></div></div></section>
+
+<section class="page" id="staff"><div class="panel"><div class="panel-head"><h2>Staff Management</h2>
+<!-- Only shown to Admin accounts — see refreshStaffAdminVisibility()
+     in staffAdmin.js. Creating another ADMIN still goes through the
+     separate admin-key setup flow on the sign-in screen, on
+     purpose — that stays the more guarded path. -->
+<button id="addStaffToggle" type="button" class="btn secondary hidden">+ Add Staff</button>
+</div>
+<p class="muted">Staff-code directory. Administrators can create Staff accounts here.</p>
+
+<!-- Admin-only new-staff form. Hidden until "+ Add Staff" is clicked. -->
+<div id="addStaffPanel" class="hidden" style="background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px">
+<form id="addStaffForm" class="form">
+<div class="field"><label for="newStaffCode">Staff code<input id="newStaffCode" placeholder="e.g. SVT1003" required></label></div>
+<div class="field"><label for="newStaffName">Full name<input id="newStaffName" placeholder="e.g. Kwame Boateng" required></label></div>
+<div class="field"><label for="newStaffPassword">Temporary password<input id="newStaffPassword" type="password" placeholder="At least 6 characters" minlength="6" required></label></div>
+<div class="actions"><button class="btn" type="submit">Create Staff Account</button><button id="cancelAddStaff" class="btn gray" type="button">Cancel</button></div>
+</form>
+</div>
+
+<table><thead><tr><th>Staff Code</th><th>Name</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody id="staffTable"></tbody></table><div class="notice">Passwords are not displayed. </div></div>
+
+<!-- Admin-only. Separate panel, on purpose — this is a much bigger
+     action than anything else on this page, so it gets its own
+     visually distinct "danger" styling and its own confirmation
+     step (typing RESET), rather than sitting next to the ordinary
+     staff-management controls where it could get clicked by
+     accident. See refreshStaffAdminVisibility() in staffAdmin.js
+     for how it's shown/hidden, and admin-reset-data for what it
+     actually does server-side. -->
+<div class="panel" id="dangerZonePanel" style="margin-top:18px;border:1px solid #f3b4b0">
+<h2 style="color:var(--red)">⚠ Danger Zone</h2>
+<p class="muted">Permanently deletes every item, every transaction, and every staff account except the one you're signed in as right now. Do not use this unless neccessary.</p>
+<button id="resetAllDataBtn" type="button" class="btn danger hidden">Reset All Data</button>
+</div></section>
+</main>
+
+<footer class="site-footer">Edenbiz Procure &middot; Cap Lamp Spares Inventory </footer>
+
+</div><!-- One shared modal, reused for three jobs: a plain message
+     (toast), a Yes/No confirmation (confirmModal), and a
+     type-to-confirm prompt (promptModal) — replacing the browser's
+     own alert()/confirm()/prompt(), which can't be styled and look
+     different in every browser. Which parts show (the input, the
+     Cancel button) is decided in JS each time one of those
+     functions runs — see dom.js. -->
+<div class="modal-backdrop hidden" id="modalBackdrop">
+  <div class="modal-box">
+    <p id="modalMessage"></p>
+    <input id="modalInput" type="text" class="hidden" autocomplete="off">
+    <div class="modal-actions">
+      <button id="modalCancelBtn" type="button" class="btn gray hidden">Cancel</button>
+      <button id="modalOkBtn" type="button" class="btn">OK</button>
+    </div>
+  </div>
+</div>
+
+<!--
+  type="module" tells the browser: "this script is allowed to use
+  import/export, and it should be treated as its own private scope."
+  main.js is the only script index.html loads directly — it pulls in
+  everything else via imports.
+-->
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -117,6 +117,47 @@ export function setupStaffAdminEvents() {
       return;
     }
 
+    const resetPasswordBtn = e.target.closest(".resetPasswordBtn");
+    if (resetPasswordBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const staffId = resetPasswordBtn.dataset.id;
+      const name = resetPasswordBtn.dataset.name;
+
+      // promptModal shows the shared popup with a text box in it and
+      // gives back whatever was typed, or null if Cancel was clicked.
+      // We check for null FIRST — before checking the password length —
+      // so clicking Cancel just quietly does nothing, instead of
+      // showing a confusing "too short" error on an empty cancel.
+      const newPassword = await promptModal(
+        `Set a new temporary password for ${name}. Tell them the new password directly — it won't be shown again after this.`,
+        { placeholder: "At least 6 characters", okLabel: "Reset Password" }
+      );
+      if (newPassword === null) return;
+
+      if (newPassword.length < 6) {
+        toast("Password must be at least 6 characters.");
+        return;
+      }
+
+      // Same reason admin-create-staff and admin-delete-staff need
+      // their own Edge Function: changing someone ELSE's password
+      // requires Supabase's Admin API and the service role key, which
+      // can never reach the browser. This calls a new Edge Function,
+      // admin-reset-password, that we still need to write and deploy —
+      // this button will show a "not found" error until that exists.
+      const { data, error } = await supabase.functions.invoke("admin-reset-password", {
+        body: { staffId, password: newPassword },
+      });
+      if (error || data?.error) {
+        toast("Couldn't reset password: " + (data?.error || error.message));
+        return;
+      }
+
+      toast(`Password reset for ${name}.`);
+      return;
+    }
+
     if (e.target.closest("#resetAllDataBtn")) {
       e.preventDefault();
       e.stopPropagation();

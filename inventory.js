@@ -229,7 +229,16 @@ export function render() {
       const deleteBtn = canDelete
         ? `<button type="button" class="btn danger deleteStaffBtn" data-id="${s.id}" data-name="${s.name}">Delete</button>`
         : "";
-      return `<tr><td><b>${s.code}</b></td><td>${s.name}</td><td>${s.role}</td><td><span class="pill ${pillClass}">${s.status}</span></td><td>${toggleBtn} ${deleteBtn}</td></tr>`;
+      // Same restriction as Delete, on purpose: only for other STAFF
+      // accounts, never your own row, never another Admin's. An admin
+      // resetting their OWN password happens somewhere else (the "My
+      // Account" page we'll add later) — this button is specifically
+      // for "a staff member forgot their password and can't log in."
+      const canResetPassword = session.currentUser?.role === "admin" && !isSelf && s.role !== "Admin";
+      const resetPasswordBtn = canResetPassword
+        ? `<button type="button" class="btn gray resetPasswordBtn" data-id="${s.id}" data-name="${s.name}">Reset Password</button>`
+        : "";
+      return `<tr><td><b>${s.code}</b></td><td>${s.name}</td><td>${s.role}</td><td><span class="pill ${pillClass}">${s.status}</span></td><td>${toggleBtn} ${resetPasswordBtn} ${deleteBtn}</td></tr>`;
     })
     .join("");
 

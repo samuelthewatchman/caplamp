@@ -1,4 +1,4 @@
-import { $, toast } from "./dom.js";
+import { $, toast, promptModal } from "./dom.js";
 import { supabase } from "./supabaseClient.js";
 import { session, loadInventoryData } from "./state.js";
 import { render } from "./inventory.js";
@@ -71,6 +71,33 @@ async function restoreSessionIfAny() {
 export function setupAuthEvents() {
   showAdminButtonIfNeeded();
   restoreSessionIfAny();
+
+  $("changePasswordBtn").addEventListener("click", async () => {
+    const newPassword = await promptModal(
+      "Choose a new password for your own account. You'll use this next time you sign in.",
+      { placeholder: "At least 6 characters", okLabel: "Change Password" }
+    );
+    if (newPassword === null) return;
+
+    if (newPassword.length < 6) {
+      toast("Password must be at least 6 characters.");
+      return;
+    }
+
+    // Unlike the admin "Reset Password" button (which needs an Edge
+    // Function and the secret service role key to touch SOMEONE
+    // ELSE's account), this changes the CURRENTLY SIGNED-IN person's
+    // own password. Supabase already knows who that is from the
+    // active session, so this one line is the whole job — no server
+    // function needed.
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast("Couldn't change password: " + error.message);
+      return;
+    }
+
+    toast("Password changed.");
+  });
 
   $("logoutBtn").addEventListener("click", async () => {
     await supabase.auth.signOut();
